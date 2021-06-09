@@ -38,13 +38,13 @@ namespace Resources_In_Cache.Controllers
         [HttpPost]
         public async Task<IActionResult> Create()
         {
-            await Task.Run(() => _service.Create(ResourceCreateModel));
+            await Task.Run(() => _service.Create(ResourceCreateModel.Title));
             return NoContent();
         }
         [HttpPut("{id}")]
         public async Task<IActionResult> Update(Guid id)
         {
-            await Task.Run(() => _service.Update(id));
+            await Task.Run(() => _service.Update(id, ResourceCreateModel));
 
             return NoContent();
         }

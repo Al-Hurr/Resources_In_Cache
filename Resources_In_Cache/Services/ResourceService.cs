@@ -11,26 +11,31 @@ namespace Resources_In_Cache.Services
     public class ResourceService
     {
         private readonly IMemoryCache _cache;
+        private const string _resourcesKey = "resourcesKey";
 
         public ResourceService(IMemoryCache cache)
         {
             _cache = cache;
         }
 
-        public void Create(ResourceCreateModel resourceCreateModel)
+        public void Create(string name)
         {
             var resource = new Resource
             {
-                Id = new Guid(),
-                Title = resourceCreateModel.Title
+                Id = Guid.NewGuid(),
+                Title = name
             };
             Add(resource);
         }
 
-        public void Update(Guid id)
+        public void Update(Guid id, ResourceCreateModel resourceCreateModel)
         {
-            var resource = Get(id);
-            Add(resource);
+            var resource = new Resource
+            {
+                Id = id,
+                Title = resourceCreateModel.Title
+            };
+            Add(resource, true);
         }
 
         public Resource Get(Guid id)
@@ -42,26 +47,48 @@ namespace Resources_In_Cache.Services
 
         public void Remove(Guid id) => _cache.Remove(id);
 
-        private void Add(Resource resource)
+        private void Add(Resource resource, bool isUpdate = false)
         {
             _cache.Set(resource.Id, resource, new MemoryCacheEntryOptions
             {
-                AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(15)
+                AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(20)
             });
+
+            if (!isUpdate)
+            {
+                List<Guid> keys;
+                _cache.TryGetValue(_resourcesKey, out keys);
+
+                if (keys == null)
+                {
+                    keys = new List<Guid>() { resource.Id };
+                }
+                else
+                {
+
+                    keys.Add(resource.Id);
+                }
+                _cache.Set(_resourcesKey, keys, new MemoryCacheEntryOptions
+                {
+                    AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(20)
+                });
+            }
+           
         }
 
         public IEnumerable<Resource> GetAll()
         {
+            Resource resource;
             var resourcesList = new List<Resource>();
-            IDictionaryEnumerator cacheEnumerator = (IDictionaryEnumerator)((IEnumerable)_cache).GetEnumerator();
-            while (cacheEnumerator.MoveNext())
+            List<Guid> keys = new List<Guid>();
+            _cache.TryGetValue(_resourcesKey, out keys);
+            if (keys != null)
             {
-                resourcesList.Add(new Resource
+                foreach (var key in keys)
                 {
-                    Id = (Guid)cacheEnumerator.Key,
-                    Title = cacheEnumerator.Value.ToString()
-                }); ;
-               // Conosle.WriteLine("{0} : {1}{2}", cacheEnumerator.Key, cacheEnumerator.Value, Environment.NewLine);
+                    _cache.TryGetValue(key, out resource);
+                    resourcesList.Add(resource);
+                }
             }
             return resourcesList;
         }
